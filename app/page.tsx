@@ -9,6 +9,7 @@ import {
   TableRow,
   TableCell,
   Pagination,
+  Button,
 } from "@heroui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -16,7 +17,9 @@ import {
   faFilePdf,
   faFileExcel,
   faFileImage,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
 
 // Định nghĩa kiểu cho dữ liệu trả về từ API
 interface Employee {
@@ -80,8 +83,8 @@ export default function App() {
   const [data, setData] = useState<EquipmentInventory[]>([]); // Khai báo kiểu dữ liệu cho state
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [allData, setAllData] = useState<EquipmentInventory[]>([]); // Dữ liệu tất cả các trang
   const rowsPerPage = 100;
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
@@ -91,6 +94,7 @@ export default function App() {
       return;
     }
 
+    // Lấy số trang tổng cộng từ API
     axios
       .get<APIResponse>(`${apiUrl}/api/equipment-inventories`, {
         params: {
@@ -108,19 +112,15 @@ export default function App() {
         },
       })
       .then((response) => {
-        setData(response.data.data);
         setTotalPages(response.data.meta.pagination.pageCount);
+        setData(response.data.data); // Cập nhật data hiện tại cho trang đang xem
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
       });
   }, [page, apiUrl]);
 
-  const items = React.useMemo(() => {
-    return data;
-  }, [data]);
-
-  // Hàm để tính sự khác biệt ngày giữa ngày hiện tại và purchase_date
+  // Hàm tính số năm đã sử dụng
   const calculateYearUsed = (purchaseDate: string) => {
     const currentDate = new Date();
     const purchaseDateObj = new Date(purchaseDate);
@@ -134,7 +134,7 @@ export default function App() {
       days += new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
-        0,
+        0
       ).getDate();
     }
 
@@ -146,7 +146,7 @@ export default function App() {
     return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""} ${days} day${days !== 1 ? "s" : ""}`;
   };
 
-  // Hàm để xác định biểu tượng file dựa trên extension
+  // Hàm để lấy biểu tượng file
   const getFileIcon = (fileName: string) => {
     const fileExtension = fileName.split(".").pop()?.toLowerCase();
 
@@ -165,92 +165,166 @@ export default function App() {
     }
   };
 
+  // Hàm xuất file Excel
+  const exportToExcel = async () => {
+    const allPagesData: EquipmentInventory[] = [];
+
+    // Duyệt qua tất cả các trang
+    for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
+      const response = await axios.get<APIResponse>(
+        `${apiUrl}/api/equipment-inventories`,
+        {
+          params: {
+            "pagination[page]": currentPage,
+            "pagination[pageSize]": rowsPerPage,
+            sort: "code:asc",
+            populate: [
+              "employee",
+              "employee.office",
+              "device_type",
+              "device_model",
+              "supplier",
+              "files",
+            ],
+          },
+        }
+      );
+
+      // Ghép dữ liệu từ các trang vào một mảng
+      allPagesData.push(...response.data.data);
+    }
+
+    // Cập nhật lại tất cả dữ liệu vào state allData
+    setAllData(allPagesData);
+
+    // Chuyển dữ liệu thành định dạng phù hợp cho Excel
+    const wsData = allPagesData.map((item) => ({
+      Code: item.code,
+      "Employee Name": item.employee?.name,
+      "Office Name": item.employee?.office.name,
+      "Device Type": item.device_type?.name,
+      "Device Model": item.device_model?.name,
+      "Purchase Date": item.purchase_date,
+      "Year Used": calculateYearUsed(item.purchase_date),
+      "Device Status": item.device_status,
+      "Warranty Duration": item.warranty_duration,
+      Comment: item.comment
+        .map((comment) => comment.children[0].text)
+        .join(", "),
+      Files: item.files
+        ? item.files
+            .map((file) => {
+              return `=HYPERLINK("${apiUrl}${file.url}"; "${file.name}")`; // Dùng hàm HYPERLINK trong Excel để tạo liên kết
+            })
+            .join(", ")
+        : "", // Nếu không có file, để trống
+    }));
+
+    // Tạo sheet và workbook
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, ws, "Equipment Inventory");
+
+    // Xuất file Excel
+    XLSX.writeFile(wb, "Equipment_Inventory.xlsx");
+  };
+
   return (
-    <Table
-      aria-label="Example table with client side pagination"
-      bottomContent={
-        <div className="flex w-full justify-center">
-          <Pagination
-            isCompact
-            showControls
-            showShadow
-            color="secondary"
-            page={page}
-            total={totalPages}
-            onChange={(newPage) => setPage(newPage)}
-          />
-        </div>
-      }
-      classNames={{
-        wrapper: "min-h-[222px]",
-      }}
-      topContent={
-        <div className="flex w-full justify-center">
-          <Pagination
-            isCompact
-            showControls
-            showShadow
-            color="secondary"
-            page={page}
-            total={totalPages}
-            onChange={(newPage) => setPage(newPage)}
-          />
-        </div>
-      }
-    >
-      <TableHeader>
-        <TableColumn key="code">Code</TableColumn>
-        <TableColumn key="employee_name">Employee</TableColumn>
-        <TableColumn key="employee_office_name">Office</TableColumn>
-        <TableColumn key="device_type">Device Type</TableColumn>
-        <TableColumn key="device_model">Device Model</TableColumn>
-        <TableColumn key="purchase_date">Purchase Date</TableColumn>
-        <TableColumn key="year_used">Year Used</TableColumn>
-        <TableColumn key="device_status">Device Status</TableColumn>
-        <TableColumn key="warranty_duration">Warranty Duration</TableColumn>
-        <TableColumn key="comment">Comment</TableColumn>
-        <TableColumn key="file">File</TableColumn>
-      </TableHeader>
-      <TableBody items={items}>
-        {(item) => (
-          <TableRow key={item.id}>
-            <TableCell>{item.code}</TableCell>
-            <TableCell>{item.employee?.name}</TableCell>
-            <TableCell>{item.employee?.office.name}</TableCell>
-            <TableCell>{item.device_type?.name}</TableCell>
-            <TableCell>{item.device_model?.name}</TableCell>
-            <TableCell>{item.purchase_date}</TableCell>
-            <TableCell>{calculateYearUsed(item.purchase_date)}</TableCell>
-            <TableCell>{item.device_status}</TableCell>
-            <TableCell>{item.warranty_duration}</TableCell>
-            <TableCell>
-              {item.comment.map((comment, index) => (
-                <div key={index}>{comment.children[0].text}</div>
-              ))}
-            </TableCell>
-            <TableCell>
-              {item.files
-                ? item.files.map((file) => (
-                    <div key={file.id}>
-                      <a
-                        href={`${apiUrl}${file.url}`}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        <span className="ml-2">
-                          <FontAwesomeIcon
-                            icon={getFileIcon(file.name)} // Lấy icon dựa trên tên file
-                            size="lg"
-                          />
-                        </span>
-                      </a>
-                    </div>
-                  ))
-                : ""}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div>
+      <div className="flex justify-end mb-4">
+        <Button className="p-2 rounded" color="success" onPress={exportToExcel}>
+          <FontAwesomeIcon icon={faDownload} />
+          Download as XLSX
+        </Button>
+      </div>
+
+      <Table
+        aria-label="Example table with client side pagination"
+        bottomContent={
+          <div className="flex w-full justify-center">
+            <Pagination
+              isCompact
+              showControls
+              showShadow
+              color="secondary"
+              page={page}
+              total={totalPages}
+              onChange={(newPage) => setPage(newPage)}
+            />
+          </div>
+        }
+        classNames={{
+          wrapper: "min-h-[222px]",
+        }}
+        topContent={
+          <div className="flex w-full justify-center">
+            <Pagination
+              isCompact
+              showControls
+              showShadow
+              color="secondary"
+              page={page}
+              total={totalPages}
+              onChange={(newPage) => setPage(newPage)}
+            />
+          </div>
+        }
+      >
+        <TableHeader>
+          <TableColumn key="code">Code</TableColumn>
+          <TableColumn key="employee_name">Employee</TableColumn>
+          <TableColumn key="employee_office_name">Office</TableColumn>
+          <TableColumn key="device_type">Device Type</TableColumn>
+          <TableColumn key="device_model">Device Model</TableColumn>
+          <TableColumn key="purchase_date">Purchase Date</TableColumn>
+          <TableColumn key="year_used">Year Used</TableColumn>
+          <TableColumn key="device_status">Device Status</TableColumn>
+          <TableColumn key="warranty_duration">Warranty Duration</TableColumn>
+          <TableColumn key="comment">Comment</TableColumn>
+          <TableColumn key="file">File</TableColumn>
+        </TableHeader>
+        <TableBody items={data}>
+          {(item) => (
+            <TableRow key={item.id}>
+              <TableCell>{item.code}</TableCell>
+              <TableCell>{item.employee?.name}</TableCell>
+              <TableCell>{item.employee?.office.name}</TableCell>
+              <TableCell>{item.device_type?.name}</TableCell>
+              <TableCell>{item.device_model?.name}</TableCell>
+              <TableCell>{item.purchase_date}</TableCell>
+              <TableCell>{calculateYearUsed(item.purchase_date)}</TableCell>
+              <TableCell>{item.device_status}</TableCell>
+              <TableCell>{item.warranty_duration}</TableCell>
+              <TableCell>
+                {item.comment.map((comment, index) => (
+                  <div key={index}>{comment.children[0].text}</div>
+                ))}
+              </TableCell>
+              <TableCell>
+                {item.files
+                  ? item.files.map((file) => (
+                      <div key={file.id}>
+                        <a
+                          href={`${apiUrl}${file.url}`}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          <span className="ml-2">
+                            <FontAwesomeIcon
+                              icon={getFileIcon(file.name)}
+                              size="lg"
+                            />
+                          </span>
+                        </a>
+                      </div>
+                    ))
+                  : ""}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
