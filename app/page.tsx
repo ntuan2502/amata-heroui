@@ -184,23 +184,13 @@ export default function App() {
 
     let years = currentDate.getFullYear() - purchaseDateObj.getFullYear();
     let months = currentDate.getMonth() - purchaseDateObj.getMonth();
-    let days = currentDate.getDate() - purchaseDateObj.getDate();
-
-    if (days < 0) {
-      months--;
-      days += new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        0
-      ).getDate();
-    }
 
     if (months < 0) {
       years--;
       months += 12;
     }
 
-    return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""} ${days} day${days !== 1 ? "s" : ""}`;
+    return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""}`;
   };
 
   const getFileIcon = (fileName: string) => {
@@ -281,9 +271,14 @@ export default function App() {
   // Gọi API lấy danh sách office
   useEffect(() => {
     const fetchOffices = async () => {
+      const params: any = {
+        sort: "name:asc",
+      };
+
       try {
         const response = await axios.get<{ data: Office[] }>(
-          `${apiUrl}/api/offices`
+          `${apiUrl}/api/offices`,
+          { params }
         );
         setOffices(response.data.data);
         if (response.data.data.length > 0) {
@@ -337,11 +332,13 @@ export default function App() {
                       />
                     </div>
                   }
-                  classNames={{
-                    wrapper: "max-h-[500px] overflow-y-auto",
-                    table: "border-collapse",
-                    thead: "sticky top-0 bg-white z-10",
-                  }}
+                  classNames={
+                    {
+                      // wrapper: "max-h-screen overflow-y-auto",
+                      // table: "border-collapse",
+                      // thead: "sticky top-0 bg-white z-10",
+                    }
+                  }
                   topContent={
                     <div className="flex-row sm:flex w-full justify-between items-center">
                       <Input
@@ -390,7 +387,9 @@ export default function App() {
                       Device Model
                     </TableColumn>
                     <TableColumn key="purchase_date">Purchase Date</TableColumn>
-                    <TableColumn key="year_used">Year Used</TableColumn>
+                    <TableColumn key="year_used" style={{ width: "10rem" }}>
+                      Year Used
+                    </TableColumn>
                     <TableColumn key="device_status">Device Status</TableColumn>
                     <TableColumn key="warranty_duration">
                       Warranty Duration
