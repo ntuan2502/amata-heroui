@@ -256,17 +256,6 @@ export default function App() {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button
-          className="p-4 rounded-full text-white"
-          color="success"
-          onPress={exportToExcel}
-        >
-          <FontAwesomeIcon icon={faDownload} />
-          Download as XLSX
-        </Button>
-      </div>
-
       <Table
         aria-label="Example table with client side pagination"
         bottomContent={
@@ -286,16 +275,15 @@ export default function App() {
           wrapper: "min-h-[222px]",
         }}
         topContent={
-          <div className="flex w-full justify-center">
-            <Pagination
-              isCompact
-              showControls
-              showShadow
-              color="secondary"
-              page={page}
-              total={totalPages}
-              onChange={(newPage) => setPage(newPage)}
-            />
+          <div className="flex w-full justify-end">
+            <Button
+              className="p-4 rounded-full text-white"
+              color="success"
+              onPress={exportToExcel}
+            >
+              <FontAwesomeIcon icon={faDownload} />
+              Download as XLSX
+            </Button>
           </div>
         }
       >
