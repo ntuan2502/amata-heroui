@@ -1,46 +1,40 @@
 "use client";
+import React from "react";
 import {
-  Navbar as HeroUINavbar,
-  NavbarContent,
-  NavbarMenu,
-  NavbarMenuToggle,
+  Navbar,
   NavbarBrand,
+  NavbarMenuToggle,
+  NavbarMenuItem,
+  NavbarMenu,
+  NavbarContent,
   NavbarItem,
+  Link,
+  Button,
 } from "@heroui/react";
-import NextLink from "next/link";
 import Image from "next/image";
+import { ThemeSwitch } from "./theme-switch";
 
-import { ThemeSwitch } from "@/components/theme-switch";
+export default function NavbarComponent() {
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
-export const Navbar = () => {
   return (
-    <HeroUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
-        <NavbarBrand as="li" className="gap-3 max-w-fit">
-          <NextLink className="flex justify-start items-center gap-1" href="/">
-            <Image alt="amata" height={75} src="/logo.png" width={75} />
-            <p className="font-bold text-inherit px-2">Equipment Inventory</p>
-          </NextLink>
+    <Navbar isBordered isMenuOpen={isMenuOpen} onMenuOpenChange={setIsMenuOpen}>
+      <NavbarContent className="sm:hidden" justify="start"></NavbarContent>
+      <NavbarContent className="sm:hidden pr-3" justify="center">
+        <NavbarBrand>
+          <Image alt="logo" height={75} src="/logo.png" width={150} />
         </NavbarBrand>
       </NavbarContent>
-
-      <NavbarContent
-        className="hidden sm:flex basis-1/5 sm:basis-full"
-        justify="end"
-      >
-        <NavbarItem className="hidden sm:flex gap-2">
+      <NavbarContent className="hidden sm:flex gap-4" justify="center">
+        <NavbarBrand>
+          <Image alt="logo" height={75} src="/logo.png" width={150} />
+        </NavbarBrand>
+      </NavbarContent>
+      <NavbarContent justify="end">
+        <NavbarItem>
           <ThemeSwitch />
         </NavbarItem>
       </NavbarContent>
-
-      <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
-        <ThemeSwitch />
-        <NavbarMenuToggle />
-      </NavbarContent>
-
-      <NavbarMenu>
-        <div className="mx-4 mt-2 flex flex-col gap-2">Hi!</div>
-      </NavbarMenu>
-    </HeroUINavbar>
+    </Navbar>
   );
-};
+}
