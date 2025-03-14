@@ -80,74 +80,75 @@ interface APIResponse {
   };
 }
 
+const rowsPerPage = 100;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
 export default function App() {
-  const [data, setData] = useState<EquipmentInventory[]>([]); // Khai báo kiểu dữ liệu cho state
+  const [data, setData] = useState<EquipmentInventory[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [isScrollTopVisible, setIsScrollTopVisible] = useState(false); // Quản lý việc hiển thị nút scroll top
-  const rowsPerPage = 100;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const [isScrollTopVisible, setIsScrollTopVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Kiểm tra khi người dùng cuộn xuống dưới và hiển thị nút scroll lên
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 300) {
-        // Khi cuộn xuống dưới 300px sẽ hiển thị nút
-        setIsScrollTopVisible(true);
-      } else {
-        setIsScrollTopVisible(false);
+      setIsScrollTopVisible(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // Hàm gọi API chung
+  const fetchEquipmentInventories = async (page: number) => {
+    if (!apiUrl) {
+      console.error("API URL is not defined in .env.local");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await axios.get<APIResponse>(
+        `${apiUrl}/api/equipment-inventories`,
+        {
+          params: {
+            "pagination[page]": page,
+            "pagination[pageSize]": rowsPerPage,
+            sort: "code:asc",
+            populate: [
+              "employee",
+              "employee.office",
+              "device_type",
+              "device_model",
+              "supplier",
+              "files",
+            ],
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Hàm gọi API khi page thay đổi
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await fetchEquipmentInventories(page);
+      if (response) {
+        setData(response.data);
+        setTotalPages(response.meta.pagination.pageCount);
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    fetchData();
+  }, [page]);
 
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  // Hàm cuộn về đầu trang
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  useEffect(() => {
-    if (!apiUrl) {
-      console.error("API URL is not defined in .env.local");
-
-      return;
-    }
-
-    // Lấy số trang tổng cộng từ API
-    axios
-      .get<APIResponse>(`${apiUrl}/api/equipment-inventories`, {
-        params: {
-          "pagination[page]": page,
-          "pagination[pageSize]": rowsPerPage,
-          sort: "code:asc",
-          populate: [
-            "employee",
-            "employee.office",
-            "device_type",
-            "device_model",
-            "supplier",
-            "files",
-          ],
-        },
-      })
-      .then((response) => {
-        setTotalPages(response.data.meta.pagination.pageCount);
-        setData(response.data.data); // Cập nhật data hiện tại cho trang đang xem
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-      });
-  }, [page, apiUrl]);
-
-  // Hàm tính số năm đã sử dụng
   const calculateYearUsed = (purchaseDate: string) => {
     const currentDate = new Date();
     const purchaseDateObj = new Date(purchaseDate);
@@ -173,10 +174,8 @@ export default function App() {
     return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""} ${days} day${days !== 1 ? "s" : ""}`;
   };
 
-  // Hàm để lấy biểu tượng file
   const getFileIcon = (fileName: string) => {
     const fileExtension = fileName.split(".").pop()?.toLowerCase();
-
     switch (fileExtension) {
       case "pdf":
         return faFilePdf;
@@ -188,40 +187,21 @@ export default function App() {
       case "png":
         return faFileImage;
       default:
-        return faFile; // Dùng icon mặc định cho các file khác
+        return faFile;
     }
   };
 
-  // Hàm xuất file Excel
   const exportToExcel = async () => {
     const allPagesData: EquipmentInventory[] = [];
 
     // Duyệt qua tất cả các trang
     for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
-      const response = await axios.get<APIResponse>(
-        `${apiUrl}/api/equipment-inventories`,
-        {
-          params: {
-            "pagination[page]": currentPage,
-            "pagination[pageSize]": rowsPerPage,
-            sort: "code:asc",
-            populate: [
-              "employee",
-              "employee.office",
-              "device_type",
-              "device_model",
-              "supplier",
-              "files",
-            ],
-          },
-        }
-      );
-
-      // Ghép dữ liệu từ các trang vào một mảng
-      allPagesData.push(...response.data.data);
+      const response = await fetchEquipmentInventories(currentPage);
+      if (response) {
+        allPagesData.push(...response.data);
+      }
     }
 
-    // Chuyển dữ liệu thành định dạng phù hợp cho Excel
     const wsData = allPagesData.map((item) => ({
       Code: item.code,
       "Employee Name": item.employee?.name,
@@ -231,27 +211,37 @@ export default function App() {
       "Purchase Date": item.purchase_date,
       "Year Used": calculateYearUsed(item.purchase_date),
       "Device Status": item.device_status,
-      "Warranty Duration": item.warranty_duration,
+      "Warranty Duration": convertWarrantyToNumber(item.warranty_duration),
       Comment: item.comment
         .map((comment) => comment.children[0].text)
         .join(", "),
       Files: item.files
         ? item.files
-            .map((file) => {
-              return `=HYPERLINK("${apiUrl}${file.url}"; "${file.name}")`; // Dùng hàm HYPERLINK trong Excel để tạo liên kết
-            })
+            .map((file) => `=HYPERLINK("${apiUrl}${file.url}"; "${file.name}")`)
             .join(", ")
-        : "", // Nếu không có file, để trống
+        : "",
     }));
 
-    // Tạo sheet và workbook
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ITAM");
 
-    XLSX.utils.book_append_sheet(wb, ws, "Equipment Inventory");
+    XLSX.writeFile(wb, "ITAM.xlsx");
+  };
 
-    // Xuất file Excel
-    XLSX.writeFile(wb, "Equipment_Inventory.xlsx");
+  const convertWarrantyToNumber = (warranty: string): string => {
+    const warrantyMap: { [key: string]: number } = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+    };
+
+    const [numberWord] = warranty.toLowerCase().split(" ");
+
+    const number = warrantyMap[numberWord] || 0; // Chuyển đổi từ chữ thành số
+    return `${number} year${number > 1 ? "s" : ""}`; // Ghép số và 'year(s)'
   };
 
   return (
@@ -271,9 +261,7 @@ export default function App() {
             />
           </div>
         }
-        classNames={{
-          wrapper: "min-h-[222px]",
-        }}
+        classNames={{ wrapper: "min-h-[222px]" }}
         topContent={
           <div className="flex w-full justify-end">
             <Button
@@ -282,22 +270,24 @@ export default function App() {
               onPress={exportToExcel}
             >
               <FontAwesomeIcon icon={faDownload} />
-              Download as XLSX
+              .xlsx
             </Button>
           </div>
         }
       >
         <TableHeader>
-          <TableColumn key="code">Code</TableColumn>
-          <TableColumn key="employee_name">Employee</TableColumn>
-          <TableColumn key="employee_office_name">Office</TableColumn>
+          <TableColumn key="code" style={{ width: "8rem" }}>Code</TableColumn>
+          <TableColumn key="employee_name" style={{ width: "13rem" }}>
+            Employee
+          </TableColumn>
+          <TableColumn key="employee_office_name" style={{ width: "14rem" }}>Office</TableColumn>
           <TableColumn key="device_type">Device Type</TableColumn>
           <TableColumn key="device_model">Device Model</TableColumn>
           <TableColumn key="purchase_date">Purchase Date</TableColumn>
           <TableColumn key="year_used">Year Used</TableColumn>
           <TableColumn key="device_status">Device Status</TableColumn>
           <TableColumn key="warranty_duration">Warranty Duration</TableColumn>
-          <TableColumn key="comment">Comment</TableColumn>
+          <TableColumn key="comment" style={{ width: "15rem" }}>Comment</TableColumn>
           <TableColumn key="file">File</TableColumn>
         </TableHeader>
         <TableBody items={data}>
@@ -311,7 +301,9 @@ export default function App() {
               <TableCell>{item.purchase_date}</TableCell>
               <TableCell>{calculateYearUsed(item.purchase_date)}</TableCell>
               <TableCell>{item.device_status}</TableCell>
-              <TableCell>{item.warranty_duration}</TableCell>
+              <TableCell>
+                {convertWarrantyToNumber(item.warranty_duration)}
+              </TableCell>
               <TableCell>
                 {item.comment.map((comment, index) => (
                   <div key={index}>{comment.children[0].text}</div>
@@ -323,15 +315,13 @@ export default function App() {
                       <div key={file.id}>
                         <a
                           href={`${apiUrl}${file.url}`}
-                          rel="noopener noreferrer"
                           target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          <span className="ml-2">
-                            <FontAwesomeIcon
-                              icon={getFileIcon(file.name)}
-                              size="lg"
-                            />
-                          </span>
+                          <FontAwesomeIcon
+                            icon={getFileIcon(file.name)}
+                            size="lg"
+                          />
                         </a>
                       </div>
                     ))

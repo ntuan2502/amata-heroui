@@ -1,8 +1,8 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Amata Equipment Inventory",
-  description: "A simple equipment inventory management system for Amata.",
+  name: "Amata IT Asset Management",
+  description: "IT Asset Management System",
   navItems: [
     {
       label: "Home",
