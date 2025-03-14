@@ -1,3 +1,4 @@
+"use client";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -5,7 +6,7 @@ import {
   NavbarMenuToggle,
   NavbarBrand,
   NavbarItem,
-} from "@heroui/navbar";
+} from "@heroui/react";
 import NextLink from "next/link";
 import Image from "next/image";
 

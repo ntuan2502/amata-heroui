@@ -1,3 +1,4 @@
+"use client";
 import { title } from "@/components/primitives";
 
 export default function DocsPage() {

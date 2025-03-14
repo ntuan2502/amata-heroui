@@ -18,6 +18,7 @@ import {
   faFileExcel,
   faFileImage,
   faDownload,
+  faArrowUp,
 } from "@fortawesome/free-solid-svg-icons";
 import * as XLSX from "xlsx";
 
@@ -83,9 +84,35 @@ export default function App() {
   const [data, setData] = useState<EquipmentInventory[]>([]); // Khai báo kiểu dữ liệu cho state
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [allData, setAllData] = useState<EquipmentInventory[]>([]); // Dữ liệu tất cả các trang
+  const [isScrollTopVisible, setIsScrollTopVisible] = useState(false); // Quản lý việc hiển thị nút scroll top
   const rowsPerPage = 100;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // Kiểm tra khi người dùng cuộn xuống dưới và hiển thị nút scroll lên
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        // Khi cuộn xuống dưới 300px sẽ hiển thị nút
+        setIsScrollTopVisible(true);
+      } else {
+        setIsScrollTopVisible(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // Hàm cuộn về đầu trang
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   useEffect(() => {
     if (!apiUrl) {
@@ -194,9 +221,6 @@ export default function App() {
       allPagesData.push(...response.data.data);
     }
 
-    // Cập nhật lại tất cả dữ liệu vào state allData
-    setAllData(allPagesData);
-
     // Chuyển dữ liệu thành định dạng phù hợp cho Excel
     const wsData = allPagesData.map((item) => ({
       Code: item.code,
@@ -233,7 +257,11 @@ export default function App() {
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <Button className="p-2 rounded" color="success" onPress={exportToExcel}>
+        <Button
+          className="p-4 rounded-full text-white"
+          color="success"
+          onPress={exportToExcel}
+        >
           <FontAwesomeIcon icon={faDownload} />
           Download as XLSX
         </Button>
@@ -325,6 +353,16 @@ export default function App() {
           )}
         </TableBody>
       </Table>
+
+      {/* Nút Scroll to Top */}
+      {isScrollTopVisible && (
+        <button
+          className="fixed bottom-10 right-10 p-4 bg-green-500 text-white rounded-full shadow-lg"
+          onClick={scrollToTop}
+        >
+          <FontAwesomeIcon className="w-6" icon={faArrowUp} />
+        </button>
+      )}
     </div>
   );
 }
