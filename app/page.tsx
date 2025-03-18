@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 import axios from "axios";
 import {
   Table,
@@ -97,6 +99,9 @@ const rowsPerPage = 100;
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 export default function App() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
   const [data, setData] = useState<EquipmentInventory[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -304,6 +309,22 @@ export default function App() {
         .includes(searchQuery.toLowerCase()) ||
       item.device_status.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  useEffect(() => {
+    const token = Cookies.get("token");
+    const user = Cookies.get("user");
+
+    if (!token || !user) {
+      router.push("/login");
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [router]);
+
+  // Nếu chưa xác thực, không render UI
+  if (isAuthenticated === null) {
+    return <div className="text-center mt-10">Đang kiểm tra xác thực...</div>;
+  }
 
   return (
     <div>
