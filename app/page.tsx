@@ -71,6 +71,12 @@ const calculateYearUsed = (purchaseDate: string) => {
 
   return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""}`;
 };
+const calculateYear = (purchaseDate: string) => {
+  const purchaseDateObj = new Date(purchaseDate);
+  const currentDate = new Date();
+  const yearsUsed = currentDate.getFullYear() - purchaseDateObj.getFullYear();
+  return yearsUsed;
+};
 
 const getFileIcon = (fileName: string) => {
   const fileExtension = fileName.split(".").pop()?.toLowerCase();
@@ -135,11 +141,11 @@ function DataTable({
         <div className="flex-row sm:flex w-full justify-between items-center">
           <div className="flex justify-center items-center">
             <Input
-              label="Search"
               type="text"
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-96 mb-4 sm:mb-0"
+              className="w-full sm:w-96"
               startContent={<FontAwesomeIcon icon={faSearch} />}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -186,7 +192,7 @@ function DataTable({
           OS Type
         </TableColumn>
         <TableColumn key="purchase_date">Purchase Date</TableColumn>
-        <TableColumn key="year_used" style={{ width: "9rem" }}>
+        <TableColumn key="year_used" style={{ width: "10rem" }}>
           Year Used
         </TableColumn>
         <TableColumn key="device_status">Device Status</TableColumn>
@@ -198,15 +204,7 @@ function DataTable({
         {(item) => (
           <TableRow
             key={item.id}
-            style={{
-              backgroundColor: (() => {
-                const purchaseDateObj = new Date(item.purchase_date);
-                const currentDate = new Date();
-                const yearsUsed =
-                  currentDate.getFullYear() - purchaseDateObj.getFullYear();
-                return yearsUsed >= 6 ? "red" : "transparent";
-              })(),
-            }}
+            className={`${calculateYear(item.purchase_date) >= 6 ? "bg-red-200" : ""} border`}
           >
             <TableCell>{item.code}</TableCell>
             <TableCell>{item.employee?.name}</TableCell>
@@ -344,7 +342,8 @@ export default function App() {
         if (searchQuery) {
           params["filters[$or][0][code][$containsi]"] = searchQuery;
           params["filters[$or][1][employee][name][$containsi]"] = searchQuery;
-          params["filters[$or][2][device_model][name][$containsi]"] = searchQuery;
+          params["filters[$or][2][device_model][name][$containsi]"] =
+            searchQuery;
           params["filters[$or][3][os_type][$containsi]"] = searchQuery;
           params["filters[$or][4][device_status][$containsi]"] = searchQuery;
         }
