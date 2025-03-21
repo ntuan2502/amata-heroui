@@ -47,6 +47,7 @@ export interface EquipmentInventory {
   device_status: string;
   purchase_date: string;
   warranty_duration: string;
+  os_type: string;
   employee: Employee;
   device_type: DeviceType;
   device_model: DeviceModel;

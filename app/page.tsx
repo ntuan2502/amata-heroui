@@ -182,8 +182,11 @@ function DataTable({
         <TableColumn key="device_model" style={{ width: "10rem" }}>
           Device Model
         </TableColumn>
+        <TableColumn key="os_type" style={{ width: "7rem" }}>
+          OS Type
+        </TableColumn>
         <TableColumn key="purchase_date">Purchase Date</TableColumn>
-        <TableColumn key="year_used" style={{ width: "10rem" }}>
+        <TableColumn key="year_used" style={{ width: "9rem" }}>
           Year Used
         </TableColumn>
         <TableColumn key="device_status">Device Status</TableColumn>
@@ -193,26 +196,26 @@ function DataTable({
       </TableHeader>
       <TableBody items={data}>
         {(item) => (
-          <TableRow key={item.id}>
+          <TableRow
+            key={item.id}
+            style={{
+              backgroundColor: (() => {
+                const purchaseDateObj = new Date(item.purchase_date);
+                const currentDate = new Date();
+                const yearsUsed =
+                  currentDate.getFullYear() - purchaseDateObj.getFullYear();
+                return yearsUsed >= 6 ? "red" : "transparent";
+              })(),
+            }}
+          >
             <TableCell>{item.code}</TableCell>
             <TableCell>{item.employee?.name}</TableCell>
             <TableCell>{item.employee?.office.name}</TableCell>
             <TableCell>{item.device_type?.name}</TableCell>
             <TableCell>{item.device_model?.name}</TableCell>
+            <TableCell>{item.os_type}</TableCell>
             <TableCell>{item.purchase_date}</TableCell>
-            <TableCell
-              style={{
-                backgroundColor: (() => {
-                  const purchaseDateObj = new Date(item.purchase_date);
-                  const currentDate = new Date();
-                  const yearsUsed =
-                    currentDate.getFullYear() - purchaseDateObj.getFullYear();
-                  return yearsUsed >= 6 ? "red" : "transparent";
-                })(),
-              }}
-            >
-              {calculateYearUsed(item.purchase_date)}
-            </TableCell>
+            <TableCell>{calculateYearUsed(item.purchase_date)}</TableCell>
             <TableCell>{item.device_status}</TableCell>
             <TableCell>
               {convertWarrantyToNumber(item.warranty_duration)}
@@ -341,6 +344,9 @@ export default function App() {
         if (searchQuery) {
           params["filters[$or][0][code][$containsi]"] = searchQuery;
           params["filters[$or][1][employee][name][$containsi]"] = searchQuery;
+          params["filters[$or][2][device_model][name][$containsi]"] = searchQuery;
+          params["filters[$or][3][os_type][$containsi]"] = searchQuery;
+          params["filters[$or][4][device_status][$containsi]"] = searchQuery;
         }
 
         const response = await axios.get<APIResponse>(
@@ -411,6 +417,7 @@ export default function App() {
       "Office Name": item.employee?.office.name,
       "Device Type": item.device_type?.name,
       "Device Model": item.device_model?.name,
+      "OS Type": item.os_type,
       "Purchase Date": item.purchase_date,
       "Year Used": calculateYearUsed(item.purchase_date),
       "Device Status": item.device_status,
