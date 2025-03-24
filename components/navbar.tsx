@@ -1,7 +1,12 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React, { useState } from "react";
 import {
-  Button,
+  Avatar,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
   Navbar,
   NavbarBrand,
   NavbarContent,
@@ -9,41 +14,27 @@ import {
 } from "@heroui/react";
 import Image from "next/image";
 import { ThemeSwitch } from "./theme-switch";
-import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export default function NavbarComponent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const router = useRouter();
+  const { isAuthenticated, user, logout } = useAuth();
 
-  // Kiểm tra token mỗi khi component render lại
-  useEffect(() => {
-    setIsAuthenticated(!!Cookies.get("token"));
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
-
-  const handleLogout = () => {
-    Cookies.remove("token");
-    Cookies.remove("user");
-    setIsAuthenticated(false);
-  };
+  // Lấy chữ cái đầu tiên của username (viết hoa)
+  const avatarInitial = user?.username
+    ? user.username.charAt(0).toUpperCase()
+    : "?";
 
   return (
     <Navbar isBordered isMenuOpen={isMenuOpen} onMenuOpenChange={setIsMenuOpen}>
       <NavbarBrand>
         <Image
           alt="logo"
-          className="hidden sm:flex"
-          height={75}
+          className="hidden sm:flex w-[100px] h-auto"
           src="/amata.png"
-          width={100}
+          height={500}
+          width={500}
+          priority
         />
       </NavbarBrand>
       <NavbarContent className="sm:hidden pr-3" justify="center">
@@ -56,18 +47,31 @@ export default function NavbarComponent() {
         <NavbarItem>
           <ThemeSwitch />
         </NavbarItem>
-        {isAuthenticated && (
-          <NavbarItem>
-            <Button
-              as={Link}
-              color="danger"
-              href="#"
-              onPress={handleLogout}
-              variant="flat"
-            >
-              Logout
-            </Button>
-          </NavbarItem>
+        {isAuthenticated && user && (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                isBordered
+                as="button"
+                className="transition-transform"
+                color="secondary"
+                name={avatarInitial}
+                size="sm"
+              >
+                {avatarInitial}
+              </Avatar>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem key="profile" textValue="profile" className="h-14 gap-2">
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold">{user.email}</p>
+              </DropdownItem>
+              <DropdownItem key="documentId" textValue="documentId">{user.documentId}</DropdownItem>
+              <DropdownItem key="logout" color="danger" onPress={logout}>
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         )}
       </NavbarContent>
     </Navbar>

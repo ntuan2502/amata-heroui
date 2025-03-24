@@ -7,6 +7,7 @@ import { Providers } from "./providers";
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import NavbarComponent from "@/components/navbar";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: {
@@ -40,6 +41,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
+        <AuthProvider>
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
           <div className="relative flex flex-col">
             <NavbarComponent />
@@ -48,6 +50,7 @@ export default function RootLayout({
             </main>
           </div>
         </Providers>
+        </AuthProvider>
       </body>
     </html>
   );
