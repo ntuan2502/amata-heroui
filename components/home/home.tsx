@@ -217,7 +217,7 @@ function DataTable({
               {convertWarrantyToNumber(item.warranty_duration)}
             </TableCell>
             <TableCell>
-              {item.comment.map((comment, index) => (
+              {item.comment?.map((comment, index) => (
                 <div key={index}>{comment.children[0].text}</div>
               ))}
             </TableCell>
