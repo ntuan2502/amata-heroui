@@ -408,7 +408,6 @@ export default function HomeComponent() {
       }
     }
 
-
     const wsData = allPagesData.map((item) => ({
       Code: item.code,
       "Employee Name": item.employee?.name,
@@ -421,7 +420,7 @@ export default function HomeComponent() {
       "Device Status": item.device_status,
       "Warranty Duration": convertWarrantyToNumber(item.warranty_duration),
       Comment: item.comment
-        .map((comment) => comment.children[0].text)
+        ?.map((comment) => comment.children[0].text)
         .join(", "),
       Files: item.files
         ? item.files
@@ -437,7 +436,13 @@ export default function HomeComponent() {
     XLSX.utils.book_append_sheet(wb, ws, "ITAM");
 
     XLSX.writeFile(wb, `ITAM_${officeName}.xlsx`);
-  }, [fetchEquipmentInventories, offices, tabSelected, totalPages, refreshTrigger]);
+  }, [
+    fetchEquipmentInventories,
+    offices,
+    tabSelected,
+    totalPages,
+    refreshTrigger,
+  ]);
 
   // Helper function for scroll to top
   const scrollToTop = useCallback(() => {
